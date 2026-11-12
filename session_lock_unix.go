@@ -16,11 +16,11 @@ func lockFile(path string) (func(), error) {
 		return nil, fmt.Errorf("opening session lock: %w", err)
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("locking session file: %w", err)
 	}
 	return func() {
 		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		f.Close()
+		_ = f.Close()
 	}, nil
 }

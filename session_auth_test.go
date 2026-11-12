@@ -81,7 +81,7 @@ func TestSessionRoundTripper(t *testing.T) {
 		// First request succeeds without rotation.
 		resp, err := client.Post(srv.URL+"/api/ds/query", "application/json", strings.NewReader(`{"q":1}`))
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, int32(0), fake.rotations.Load())
 
@@ -97,7 +97,7 @@ func TestSessionRoundTripper(t *testing.T) {
 
 		resp, err = client.Post(srv.URL+"/api/ds/query", "application/json", strings.NewReader(`{"q":2}`))
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, int32(1), fake.rotations.Load())
 		assert.Equal(t, []string{`{"q":1}`, `{"q":2}`}, fake.bodies)
@@ -124,7 +124,7 @@ func TestSessionRoundTripper(t *testing.T) {
 
 		resp, err := client.Get(srv.URL + "/api/user")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, int32(1), fake.rotations.Load())
 	})
@@ -149,7 +149,7 @@ func TestSessionRoundTripper(t *testing.T) {
 		client := &http.Client{Transport: newSessionRoundTripper(http.DefaultTransport, storeB)}
 		resp, err := client.Get(srv.URL + "/api/user")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, int32(1), fake.rotations.Load())
 	})
@@ -181,7 +181,7 @@ func TestBuildTransportSession(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := (&http.Client{Transport: rt}).Get(srv.URL + "/api/user")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
@@ -190,7 +190,7 @@ func TestBuildTransportSession(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := (&http.Client{Transport: rt}).Get(srv.URL + "/api/user")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 }
@@ -211,8 +211,8 @@ func TestSaveSessionWaitsForRotationLock(t *testing.T) {
 		done <- SaveSession(path, SessionFile{URL: "https://g", Cookies: map[string]string{sessionCookieName: "new"}})
 	}()
 	select {
-	case <-done:
-		t.Fatal("SaveSession must not write while a rotation holds the lock")
+	case err := <-done:
+		t.Fatalf("SaveSession must not write while a rotation holds the lock (returned %v)", err)
 	case <-time.After(100 * time.Millisecond):
 	}
 	unlock()

@@ -44,7 +44,7 @@ func TestLoadSessionStoreFromValue(t *testing.T) {
 
 		resp, err := client.Get(srv.URL + "/api/user")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, int32(1), fake.rotations.Load())
 		require.Len(t, persisted, 1)

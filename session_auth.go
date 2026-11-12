@@ -197,7 +197,7 @@ func (s *SessionStore) rotate(ctx context.Context, rt http.RoundTripper, usedTok
 	if err != nil {
 		return fmt.Errorf("rotating grafana session: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
@@ -263,13 +263,13 @@ func WriteSessionFile(path string, sf SessionFile) error {
 	if err != nil {
 		return fmt.Errorf("writing session file: %w", err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Close(); err != nil {
@@ -328,7 +328,7 @@ func (rt *sessionRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 	// Make the body replayable so the request can be retried after a rotation.
 	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
 		body, err := io.ReadAll(req.Body)
-		req.Body.Close()
+		_ = req.Body.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -352,7 +352,7 @@ func (rt *sessionRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 
 	// The session may have been rotated elsewhere or have expired early.
 	_, _ = io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if err := rt.store.rotate(req.Context(), rt.underlying, token); err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (rt *sessionRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 	retry.Header.Set("Cookie", cookie)
 	resp, err = rt.underlying.RoundTrip(retry)
 	if err == nil && resp.StatusCode == http.StatusUnauthorized {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, ErrSessionExpired
 	}
 	return resp, err
@@ -407,7 +407,7 @@ func ValidateSession(ctx context.Context, client *http.Client, grafanaURL string
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("grafana returned %s for /api/user", resp.Status)
 	}

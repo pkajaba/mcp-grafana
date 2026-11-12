@@ -46,7 +46,7 @@ Flags:
 func runLogin(args []string) int {
 	fs := flag.NewFlagSet("login", flag.ContinueOnError)
 	fs.Usage = func() {
-		fmt.Fprint(fs.Output(), loginUsage)
+		_, _ = fmt.Fprint(fs.Output(), loginUsage)
 		fs.PrintDefaults()
 	}
 	grafanaURL := fs.String("url", os.Getenv("GRAFANA_URL"), "Grafana URL (defaults to GRAFANA_URL)")
