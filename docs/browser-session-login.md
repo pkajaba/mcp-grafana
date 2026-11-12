@@ -95,8 +95,17 @@ curl -fsSL -o "$TMP/$FILE" "$BASE/$FILE" \
 rm -rf "$TMP"
 ```
 
-Any directory on your `PATH` works in place of `$HOME/bin`. To update, run the
-same commands again and restart your MCP client.
+To update, run the same commands again and restart your MCP client.
+
+The rest of this guide runs `mcp-grafana` by name. If `$HOME/bin` isn't on your
+`PATH` (it often isn't on macOS), add it, for example in `~/.zshrc`:
+
+```bash
+export PATH="$HOME/bin:$PATH"
+```
+
+Or type the full path, `$HOME/bin/mcp-grafana`. MCP client configs always need
+the full path.
 
 The binaries are built by a
 [GitHub Actions workflow](../.github/workflows/fork-release.yml) from the tagged
@@ -139,8 +148,10 @@ publishes the release. Upstream's own workflows are disabled in this fork.
 mcp-grafana login --url https://yourcompany.grafana.net
 ```
 
-1. A new Chrome window opens on the Grafana login page. It uses its own profile
-   (`~/.config/mcp-grafana/browser-profile`), separate from your normal browser.
+1. A new Chrome window opens on the Grafana login page. It uses its own profile,
+   `browser-profile/` next to the session file (by default
+   `~/.config/mcp-grafana/browser-profile`), separate from your normal browser.
+   The profile remembers your identity provider sign-in, so next time is quicker.
 2. Sign in as usual, including SSO and MFA.
 3. Once Grafana has loaded, go back to the terminal and press **Enter**, or quit
    that Chrome window (Cmd+Q on macOS). When stdin isn't a terminal, for example
@@ -192,7 +203,7 @@ mcp-grafana login --url https://yourcompany.grafana.net --paste
 | `--browser`      | auto-detected                                                 | Path to a Chrome, Chromium or Edge executable.               |
 | `--timeout`      | `5m`                                                          | How long to wait for you to finish signing in.               |
 
-Run `mcp-grafana login --help` for the same list.
+`mcp-grafana login --help` shows a short version of this list.
 
 ## Configure your MCP client
 
@@ -232,9 +243,13 @@ to keep the server read-only.
 ### Claude Code
 
 ```bash
-claude mcp add --env GRAFANA_SESSION_FILE="$HOME/.config/mcp-grafana/session.json" \
+claude mcp add --scope user \
+  --env GRAFANA_SESSION_FILE="$HOME/.config/mcp-grafana/session.json" \
   grafana -- "$HOME/bin/mcp-grafana"
 ```
+
+`--scope user` makes it available in every project. Without it, Claude Code
+adds the server only for the current directory.
 
 ### Codex
 
@@ -296,11 +311,10 @@ under **Profile → Sessions** in Grafana.
 ## Cursor cloud agents
 
 > [!WARNING]
-> **Not usable with our Grafana at the moment.** Our Grafana is only reachable
-> over the VPN, and Cursor cloud agents run on Cursor's servers outside it, so
-> they can't connect to it. Use a local client (Claude Code, Codex, Cursor or
-> Claude Desktop) instead. Cloud mode works only with a Grafana instance that is
-> reachable from the internet.
+> **Cloud agents need a Grafana that is reachable from the internet.** They run
+> on Cursor's servers, so they can't connect to a Grafana that is only reachable
+> over a VPN or a private network. In that case, use a local client (Claude
+> Code, Codex, Cursor or Claude Desktop) instead.
 
 Cloud agents can't open a browser or read a file from your laptop, so in cloud
 mode the session JSON itself goes into a Cursor secret, and every rotation is
@@ -436,7 +450,7 @@ A session also ends if you sign out of Grafana, or revoke the session under
 
 ## Troubleshooting
 
-### `grafana browser session expired or was revoked; run mcp-grafana login to sign in again`
+### ``grafana browser session expired or was revoked; run `mcp-grafana login` to sign in again``
 
 The session reached its lifetime, was revoked, or was rotated away by a browser
 using the same session. Run `mcp-grafana login` again. In Cursor cloud mode,
@@ -483,14 +497,15 @@ the profile. Close it and try again.
 
 ### `no Grafana session found in the browser`
 
-You pressed Enter before Grafana finished loading after sign-in. Run the
-command again and wait until you see Grafana itself.
+You pressed Enter, or quit the browser, before Grafana finished loading after
+sign-in. Run the command again and wait until you see Grafana itself.
 
-### `captured session was rejected: grafana returned 401 Unauthorized for /api/user`
+### `grafana returned 401 Unauthorized for /api/user`
 
-Sign-in didn't complete, or (in paste mode) the browser had already rotated the
-cookie you copied. Copy a fresh one from a private window and close the window
-right after.
+In browser mode the message starts with `captured session was rejected`: sign-in
+didn't complete. In paste mode it ends with a note about rotation: the browser
+had already rotated the cookie you copied. Copy a fresh one from a private
+window and close the window right after.
 
 ### `updating Cursor secret GRAFANA_SESSION_FILE: unexpected status …`
 
@@ -520,14 +535,18 @@ Add your Cursor API key as the `CURSOR_API_KEY` personal secret.
 | :-------------------------------------------- | :-------------------------------------------------------- |
 | `~/.config/mcp-grafana/session.json`          | Default session file (`0600`).                            |
 | `~/.config/mcp-grafana/session.json.lock`     | Lock file that serializes rotation between processes.     |
-| `~/.config/mcp-grafana/browser-profile/`      | Chrome profile used by browser-mode sign-in.              |
+| `~/.config/mcp-grafana/browser-profile/`      | Chrome profile used by browser-mode sign-in. It lives next to the session file, so a `--session-file` in another directory gets its own profile. |
 
 ### Platform notes
 
 - **macOS and Linux:** full support, including sharing one session file between
   several processes.
-- **Windows:** sign-in and session auth work, but there is no lock between
-  processes. Use one session file per MCP server.
+- **Linux with snap Chromium** (the default `chromium` on Ubuntu): snap
+  confinement may block the profile directory under `~/.config`. If browser
+  sign-in fails, install Google Chrome from its `.deb` package or use `--paste`.
+- **Windows:** not tested and no release binaries. Session auth should work, but
+  there is no lock between processes, so use one session file per MCP server.
+  To finish browser sign-in, quit the browser rather than pressing Enter.
 
 ### Code
 

@@ -128,8 +128,8 @@ Then:
 ```bash
 test -s "$HOME/.config/mcp-grafana/session.json" && echo "session saved"
 # Permissions must be 600:
-stat -f '%Lp' "$HOME/.config/mcp-grafana/session.json" 2>/dev/null \
-  || stat -c '%a' "$HOME/.config/mcp-grafana/session.json"
+stat -c '%a' "$HOME/.config/mcp-grafana/session.json" 2>/dev/null \
+  || stat -f '%Lp' "$HOME/.config/mcp-grafana/session.json"
 ```
 
 ### Paste mode
@@ -139,7 +139,7 @@ mode needs the user to paste a cookie, so **the user must run it in their own
 terminal**. Give them this command:
 
 ```bash
-~/bin/mcp-grafana login --url <GRAFANA_URL> --paste
+"$HOME/bin/mcp-grafana" login --url "<GRAFANA_URL>" --paste
 ```
 
 Wait until they confirm it printed `Signed in to …`, then run the checks above.
@@ -229,11 +229,10 @@ If the tool fails, check the error against
 ## 6. Optional: Cursor cloud agents
 
 > [!WARNING]
-> **Not usable with our Grafana at the moment.** Our Grafana is only reachable
-> over the VPN, and Cursor cloud agents run on Cursor's servers outside it, so
-> they can't connect. If the user asks for cloud agents, tell them this and skip
-> this step. It only works with a Grafana instance that is reachable from the
-> internet.
+> **Cloud agents need a Grafana that is reachable from the internet.** They run
+> on Cursor's servers, so they can't connect to a Grafana that is only
+> reachable over a VPN or a private network. If that's the user's case, tell
+> them and skip this step.
 
 Do this only if the user asks for cloud agents. Most of it happens in the Cursor
 dashboard, so guide the user through it rather than doing it yourself. Cursor's
@@ -252,7 +251,9 @@ own docs: https://cursor.com/docs/cloud-agent.
    so it never appears in the chat or terminal:
 
    ```bash
-   pbcopy < "$HOME/.config/mcp-grafana/session.json"   # macOS
+   pbcopy < "$HOME/.config/mcp-grafana/session.json"                     # macOS
+   wl-copy < "$HOME/.config/mcp-grafana/session.json"                    # Linux, Wayland
+   xclip -selection clipboard < "$HOME/.config/mcp-grafana/session.json" # Linux, X11
    ```
 
 3. **Add personal secrets** (user, in the Cursor dashboard):

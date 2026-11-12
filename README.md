@@ -20,7 +20,8 @@
 > "$HOME/bin/mcp-grafana" login --url https://yourcompany.grafana.net
 > ```
 >
-> Then set `GRAFANA_SESSION_FILE` in your MCP client config.
+> Then set `GRAFANA_SESSION_FILE` in your MCP client config. The guide also shows how to
+> verify the download against its checksum and build attestation.
 > **Start here: [Sign in with your Grafana browser session](docs/browser-session-login.md).**
 > Or let your coding agent install and configure it with **[Agent setup](docs/agent-setup.md)**.
 >
