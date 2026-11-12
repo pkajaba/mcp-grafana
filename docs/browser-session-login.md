@@ -295,6 +295,13 @@ under **Profile → Sessions** in Grafana.
 
 ## Cursor cloud agents
 
+> [!WARNING]
+> **Not usable with our Grafana at the moment.** Our Grafana is only reachable
+> over the VPN, and Cursor cloud agents run on Cursor's servers outside it, so
+> they can't connect to it. Use a local client (Claude Code, Codex, Cursor or
+> Claude Desktop) instead. Cloud mode works only with a Grafana instance that is
+> reachable from the internet.
+
 Cloud agents can't open a browser or read a file from your laptop, so in cloud
 mode the session JSON itself goes into a Cursor secret, and every rotation is
 written back to that secret.

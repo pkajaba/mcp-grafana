@@ -228,6 +228,13 @@ If the tool fails, check the error against
 
 ## 6. Optional: Cursor cloud agents
 
+> [!WARNING]
+> **Not usable with our Grafana at the moment.** Our Grafana is only reachable
+> over the VPN, and Cursor cloud agents run on Cursor's servers outside it, so
+> they can't connect. If the user asks for cloud agents, tell them this and skip
+> this step. It only works with a Grafana instance that is reachable from the
+> internet.
+
 Do this only if the user asks for cloud agents. Most of it happens in the Cursor
 dashboard, so guide the user through it rather than doing it yourself. Cursor's
 own docs: https://cursor.com/docs/cloud-agent.
