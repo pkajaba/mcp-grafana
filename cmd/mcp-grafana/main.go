@@ -1638,6 +1638,10 @@ func run(transport, addr, basePath, endpointPath string, logLevel slog.Level, dt
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "login" {
+		os.Exit(runLogin(os.Args[2:]))
+	}
+
 	var transport string
 	flag.StringVar(&transport, "t", "stdio", "Transport type (stdio, sse or streamable-http)")
 	flag.StringVar(
@@ -1822,6 +1826,10 @@ func main() {
 	if len(promEnforcedMatchers) > 0 {
 		grafanaConfig.PrometheusEnforcedMatchers = promEnforcedMatchers
 		warnPrometheusEnforcementBypasses(dt)
+	}
+	if err := configureSessionAuth(&grafanaConfig, transport); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
 
 	enforcedMatchers, err := tools.ParseEnforcedMatchers(gc.lokiEnforcedMatchers)

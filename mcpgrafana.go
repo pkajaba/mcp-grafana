@@ -320,6 +320,11 @@ type GrafanaConfig struct {
 	// It is used for on-behalf-of auth in Grafana Cloud.
 	IDToken string
 
+	// Session, when set, authenticates requests with a Grafana browser
+	// session captured by `mcp-grafana login` (GRAFANA_SESSION_FILE) and
+	// rotates it automatically. Used only when no other credentials are set.
+	Session *SessionStore
+
 	// TLSConfig holds TLS configuration for all Grafana clients.
 	TLSConfig *TLSConfig
 
@@ -1098,6 +1103,9 @@ func BuildTransport(cfg *GrafanaConfig, base http.RoundTripper, opts ...Transpor
 
 	// Auth (innermost header layer — wins on conflicts with ExtraHeaders)
 	if !options.withoutAuth {
+		if cfg.Session != nil && cfg.OverrideURL == "" && cfg.AccessToken == "" && cfg.APIKey == "" && cfg.BasicAuth == nil {
+			transport = newSessionRoundTripper(transport, cfg.Session)
+		}
 		transport = NewAuthRoundTripper(transport, cfg.AccessToken, cfg.IDToken, cfg.APIKey, cfg.BasicAuth)
 	}
 
@@ -1799,6 +1807,7 @@ func NewGrafanaClient(ctx context.Context, grafanaURL, apiKey string, auth *url.
 						AccessToken:               config.AccessToken,
 						IDToken:                   config.IDToken,
 						OrgID:                     config.OrgID,
+						Session:                   config.Session,
 						TLSConfig:                 config.TLSConfig,
 						ExtraHeaders:              config.ExtraHeaders,
 						OverrideURL:               config.OverrideURL,
@@ -1849,6 +1858,7 @@ func NewGrafanaClient(ctx context.Context, grafanaURL, apiKey string, auth *url.
 		BasicAuth:                 auth,
 		AccessToken:               config.AccessToken,
 		IDToken:                   config.IDToken,
+		Session:                   config.Session,
 		TLSConfig:                 config.TLSConfig,
 		ExtraHeaders:              config.ExtraHeaders,
 		OverrideURL:               config.OverrideURL,
