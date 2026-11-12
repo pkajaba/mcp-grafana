@@ -6,6 +6,23 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/grafana/mcp-grafana.svg)](https://pkg.go.dev/github.com/grafana/mcp-grafana)
 [![MCP Catalog](https://archestra.ai/mcp-catalog/api/badge/quality/grafana/mcp-grafana)](https://archestra.ai/mcp-catalog/grafana__mcp-grafana)
 
+> [!NOTE]
+> **This is a team fork of [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana).**
+> It adds one feature: signing in with **your own Grafana browser session** (SSO, MFA, ...)
+> instead of a service account token, including support for Cursor cloud agents.
+>
+> ```bash
+> go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana
+> mcp-grafana login --url https://yourcompany.grafana.net
+> ```
+>
+> Then set `GRAFANA_SESSION_FILE` in your MCP client config.
+> **Start here: [Sign in with your Grafana browser session](docs/browser-session-login.md).**
+> Or let your coding agent install and configure it with **[Agent setup](docs/agent-setup.md)**.
+>
+> Everything else below is the upstream README. `uvx mcp-grafana`, the upstream Docker
+> images and the upstream releases do **not** include this feature, so build from this repository.
+
 A [Model Context Protocol][mcp] (MCP) server for Grafana.
 
 This provides access to your Grafana instance and the surrounding ecosystem.
@@ -709,6 +726,29 @@ This MCP server works with both local Grafana instances and Grafana Cloud. For G
    Tip: If you're not comfortable configuring fine-grained RBAC scopes, a simpler (but less restrictive) option is to assign the built-in `Editor` role to the service account. This grants broad read/write access that covers most MCP server operations — use it when convenience outweighs strict least-privilege requirements.
 
    > **Note:** The environment variable `GRAFANA_API_KEY` is deprecated and will be removed in a future version. Please migrate to using `GRAFANA_SERVICE_ACCOUNT_TOKEN` instead. The old variable name will continue to work for backward compatibility but will show deprecation warnings.
+
+#### Signing in with your browser session (this fork)
+
+Instead of a service account token, you can sign in once with `mcp-grafana login`. The server then acts as you and keeps the session alive by rotating it automatically:
+
+```bash
+mcp-grafana login --url https://yourcompany.grafana.net
+```
+
+```json
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "/Users/you/bin/mcp-grafana",
+      "env": {
+        "GRAFANA_SESSION_FILE": "/Users/you/.config/mcp-grafana/session.json"
+      }
+    }
+  }
+}
+```
+
+Session auth works with the stdio transport only, and can't be combined with the other credential variables. See [Sign in with your Grafana browser session](docs/browser-session-login.md) for paste mode, Cursor cloud agents (`CURSOR_CLOUD=true`), Docker, security notes and troubleshooting.
 
 #### Reading the service account token from a file
 
