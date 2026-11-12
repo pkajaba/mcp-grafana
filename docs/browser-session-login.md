@@ -33,14 +33,19 @@ Grafana web UI does. You only sign in again when Grafana ends the session
 ## Quick start
 
 ```bash
-# 1. Build the fork
-git clone https://github.com/pkajaba/mcp-grafana.git
-cd mcp-grafana
-go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana
+# 1. Download the binary for your OS and CPU (macOS or Linux)
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+mkdir -p "$HOME/bin"
+curl -fsSL -o "$HOME/bin/mcp-grafana" \
+  "https://github.com/pkajaba/mcp-grafana/releases/latest/download/mcp-grafana_${OS}_${ARCH}"
+chmod +x "$HOME/bin/mcp-grafana"
 
 # 2. Sign in (opens a Chrome window)
-mcp-grafana login --url https://yourcompany.grafana.net
+"$HOME/bin/mcp-grafana" login --url https://yourcompany.grafana.net
 ```
+
+[Install](#install) shows how to verify the download.
 
 Then point your MCP client at the binary and the session file:
 
@@ -63,13 +68,54 @@ That's it. `GRAFANA_URL` is optional: the server takes it from the session file.
 
 The `login` command and session support exist only in this fork, so
 `uvx mcp-grafana`, the Docker images and the upstream releases **won't work**.
-Build from this repository instead.
+Use this fork's [releases](https://github.com/pkajaba/mcp-grafana/releases),
+which have binaries for macOS and Linux on amd64 and arm64.
 
-You need:
+For browser sign-in you also need Google Chrome, Chromium or Microsoft Edge (on
+macOS, Brave is also detected). Without one you can use [paste mode](#paste-mode).
 
-- Go, at the version in [`go.mod`](../go.mod);
-- for browser sign-in: Google Chrome, Chromium or Microsoft Edge (on macOS, Brave
-  is also detected). Without one you can use [paste mode](#paste-mode).
+### Download a release
+
+This downloads the latest release for your OS and CPU, checks it against the
+published checksums, and installs it as `~/bin/mcp-grafana`:
+
+```bash
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+FILE="mcp-grafana_${OS}_${ARCH}"
+BASE=https://github.com/pkajaba/mcp-grafana/releases/latest/download
+TMP=$(mktemp -d)
+curl -fsSL -o "$TMP/$FILE" "$BASE/$FILE" \
+  && curl -fsSL -o "$TMP/checksums.txt" "$BASE/checksums.txt" \
+  && (cd "$TMP" && grep " $FILE\$" checksums.txt | {
+        if command -v sha256sum >/dev/null; then sha256sum -c -; else shasum -a 256 -c -; fi; }) \
+  && mkdir -p "$HOME/bin" \
+  && install -m 755 "$TMP/$FILE" "$HOME/bin/mcp-grafana" \
+  && "$HOME/bin/mcp-grafana" --version
+rm -rf "$TMP"
+```
+
+Any directory on your `PATH` works in place of `$HOME/bin`. To update, run the
+same commands again and restart your MCP client.
+
+The binaries are built by a
+[GitHub Actions workflow](../.github/workflows/fork-release.yml) from the tagged
+commit, with signed build provenance. With the
+[GitHub CLI](https://cli.github.com/) you can check that a binary came from that
+workflow:
+
+```bash
+gh attestation verify "$HOME/bin/mcp-grafana" -R pkajaba/mcp-grafana
+```
+
+The macOS binaries aren't signed by Apple. A file downloaded with `curl`, as
+above, runs as is. If you download it in a browser instead, macOS blocks it.
+Remove the quarantine flag with `xattr -d com.apple.quarantine mcp-grafana`.
+
+### Build from source
+
+For Windows, or to build a change yourself, you need Go at the version in
+[`go.mod`](../go.mod):
 
 ```bash
 git clone https://github.com/pkajaba/mcp-grafana.git
@@ -77,15 +123,13 @@ cd mcp-grafana
 go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana
 ```
 
-Any directory on your `PATH` works in place of `$HOME/bin`. Or run
-`go install ./cmd/mcp-grafana` to put it in `$(go env GOPATH)/bin`.
+### Making a release
 
-To update later:
-
-```bash
-git pull
-go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana
-```
+For maintainers: push a tag such as `v2.3.0-session.2`. The upstream version
+comes first, then the fork's release number.
+[`fork-release.yml`](../.github/workflows/fork-release.yml) builds the binaries
+with [`.goreleaser.fork.yaml`](../.goreleaser.fork.yaml), attests them and
+publishes the release. Upstream's own workflows are disabled in this fork.
 
 ## Sign in
 

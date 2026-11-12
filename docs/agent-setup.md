@@ -7,7 +7,7 @@ Claude Code, Cursor, Codex or another coding agent:
 > following `docs/agent-setup.md` in that repository. My Grafana URL is
 > `https://<your-instance>`.
 
-The agent installs the server and configures your MCP client. You only sign in
+The agent downloads the server and configures your MCP client. You only sign in
 when a browser window opens. Background and details are in
 [browser-session-login.md](browser-session-login.md).
 
@@ -34,64 +34,73 @@ worked. If a check fails, stop, tell the user what failed, and point them to
 6. **Use absolute paths in MCP configs.** Most clients don't expand `~` or
    `$HOME`.
 
-The steps assume macOS or Linux and the default paths below. On Windows, adapt
-the paths. Note that on Windows several processes must not share one session
-file.
+The steps assume macOS or Linux (amd64 or arm64) and the default paths below.
+Release binaries exist only for those. On Windows, stop and point the user to
+[Install](browser-session-login.md#install), which explains building from source.
 
-| What         | Path                                   |
-| :----------- | :------------------------------------- |
-| Source       | `$HOME/src/mcp-grafana`                |
-| Binary       | `$HOME/bin/mcp-grafana`                |
+| What         | Path                                     |
+| :----------- | :--------------------------------------- |
+| Binary       | `$HOME/bin/mcp-grafana`                  |
 | Session file | `$HOME/.config/mcp-grafana/session.json` |
 
 ## 1. Check prerequisites
 
+You need `curl`. Then check for a supported browser for sign-in:
+
 ```bash
-go version
-git --version
+# macOS
+ls -d "/Applications/Google Chrome.app" "/Applications/Chromium.app" \
+      "/Applications/Microsoft Edge.app" "/Applications/Brave Browser.app" 2>/dev/null
+# Linux
+command -v google-chrome google-chrome-stable chromium chromium-browser microsoft-edge
 ```
 
-- Go must be installed. After cloning (step 2), compare `go version` with the
-  `go` line in `go.mod`. A newer Go is fine. If yours is older, Go usually
-  downloads the right toolchain by itself during the build.
-- Check for a supported browser for sign-in:
+If none is found, use paste mode in step 3.
 
-  ```bash
-  # macOS
-  ls -d "/Applications/Google Chrome.app" "/Applications/Chromium.app" \
-        "/Applications/Microsoft Edge.app" "/Applications/Brave Browser.app" 2>/dev/null
-  # Linux
-  command -v google-chrome google-chrome-stable chromium chromium-browser microsoft-edge
-  ```
+## 2. Download the binary
 
-  If none is found, use paste mode in step 3.
-
-## 2. Get the code and build
-
-If the current directory is already a checkout of this repository, build from
-it and skip the clone.
+Download the latest release for this OS and CPU, check it against the
+published checksums, and install it. Don't build from source and don't use
+`uvx mcp-grafana` or the upstream Docker images: they don't have `login`.
 
 ```bash
-REPO_DIR="$HOME/src/mcp-grafana"
-if [ -d "$REPO_DIR/.git" ]; then
-  git -C "$REPO_DIR" pull --ff-only
-else
-  git clone https://github.com/pkajaba/mcp-grafana.git "$REPO_DIR"
-fi
-mkdir -p "$HOME/bin"
-(cd "$REPO_DIR" && go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana)
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+FILE="mcp-grafana_${OS}_${ARCH}"
+BASE=https://github.com/pkajaba/mcp-grafana/releases/latest/download
+TMP=$(mktemp -d)
+curl -fsSL -o "$TMP/$FILE" "$BASE/$FILE" \
+  && curl -fsSL -o "$TMP/checksums.txt" "$BASE/checksums.txt" \
+  && (cd "$TMP" && grep " $FILE\$" checksums.txt | {
+        if command -v sha256sum >/dev/null; then sha256sum -c -; else shasum -a 256 -c -; fi; }) \
+  && mkdir -p "$HOME/bin" \
+  && install -m 755 "$TMP/$FILE" "$HOME/bin/mcp-grafana"
+rm -rf "$TMP"
+```
+
+If `gh` is installed, also verify where the binary was built. Run this before
+the `rm -rf "$TMP"` line, or on the installed file:
+
+```bash
+gh attestation verify "$HOME/bin/mcp-grafana" -R pkajaba/mcp-grafana
 ```
 
 **Check:**
 
 ```bash
+"$HOME/bin/mcp-grafana" --version
 "$HOME/bin/mcp-grafana" login --help 2>&1 | head -1
 ```
 
-The output must be `Usage: mcp-grafana login [flags]`. If it isn't, you built
-upstream `mcp-grafana`, not this fork.
+The version ends in `-session.<n>`, and the second line is
+`Usage: mcp-grafana login [flags]`.
 
-If `git clone` fails, stop and show the user the error.
+If a download fails (HTTP 404), there's no release for this OS and CPU. If the
+checksum check fails, don't install the file. In both cases, stop and show the
+user the error.
+
+To update later, run the same commands again. Running MCP servers keep the old
+binary until the client restarts them.
 
 ## 3. Sign in (the user does this)
 
@@ -248,10 +257,10 @@ own docs: https://cursor.com/docs/cloud-agent.
    Make sure no **environment** secret is also called `GRAFANA_SESSION_FILE`,
    because it would override the personal one.
 
-4. **Install the binary in the cloud environment.** Add the build from step 2 to
-   the environment's setup, which can be agent-led setup, a snapshot, or a
-   Dockerfile, as described in Cursor's docs. The environment needs read access
-   to this repository.
+4. **Install the binary in the cloud environment.** Add the download from step 2
+   to the environment's setup, which can be agent-led setup, a snapshot, or a
+   Dockerfile, as described in Cursor's docs. Cloud environments run Linux, and
+   the same commands pick the right binary.
 
 5. **Add the MCP server** (user, through the MCP dropdown in cursor.com/agents):
    command `mcp-grafana` (or its absolute path in the environment), environment
@@ -270,7 +279,7 @@ run at the same time can log each other out (see
 ```bash
 claude mcp remove grafana --scope user    # Claude Code
 codex mcp remove grafana                  # Codex
-rm -f "$HOME/bin/mcp-grafana"
+rm -f "$HOME/bin/mcp-grafana"             # the binary
 rm -rf "$HOME/.config/mcp-grafana"        # session, lock file and browser profile
 ```
 

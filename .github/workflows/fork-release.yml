@@ -1,0 +1,50 @@
+# Release workflow for this fork (pkajaba/mcp-grafana). Upstream's workflows,
+# including release.yml, are disabled in the fork's Actions settings.
+#
+# Push a tag like v2.3.0-session.1 to build macOS and Linux binaries, attest
+# their build provenance and publish a GitHub release.
+name: fork-release
+
+on:
+  push:
+    tags:
+      - "v*-session.*"
+
+permissions: {}
+
+jobs:
+  release:
+    if: github.repository == 'pkajaba/mcp-grafana'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+      id-token: write # sign the provenance attestation
+      attestations: write # store the attestation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Same Go as upstream's release builds (see mise.toml), not "latest".
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.11"
+          cache: false
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.20.0
+          args: release --clean --config .goreleaser.fork.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Attests every file listed in checksums.txt, i.e. every binary.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt

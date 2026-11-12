@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+#
+# Release config for this fork (pkajaba/mcp-grafana), used by
+# .github/workflows/fork-release.yml. Upstream's .goreleaser.yaml is left
+# untouched so rebasing on grafana/mcp-grafana doesn't conflict.
+#
+# It publishes plain binaries for macOS and Linux, named
+# mcp-grafana_<os>_<arch>, plus checksums.txt.
+
+version: 2
+
+project_name: mcp-grafana
+
+builds:
+  - id: default
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/mcp-grafana
+    binary: mcp-grafana
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags: "-s -w -X github.com/grafana/mcp-grafana/v2.version={{.Version}}"
+
+archives:
+  - id: binaries
+    formats: [binary]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  disable: true
+
+release:
+  # Tags look like v2.3.0-session.1, which semver treats as a pre-release.
+  # Mark releases as normal so /releases/latest/download/... finds them.
+  prerelease: "false"
+  make_latest: "true"
+  header: |
+    Fork of [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana) with
+    Grafana browser-session login (`mcp-grafana login`). See the
+    [guide](https://github.com/{{ .Env.GITHUB_REPOSITORY }}/blob/{{ .Tag }}/docs/browser-session-login.md)
+    and the [agent setup](https://github.com/{{ .Env.GITHUB_REPOSITORY }}/blob/{{ .Tag }}/docs/agent-setup.md).
+
+    Binaries: `mcp-grafana_<darwin|linux>_<amd64|arm64>`. Verify a download with
+    `shasum -a 256 -c` against `checksums.txt`, or with
+    `gh attestation verify <file> -R {{ .Env.GITHUB_REPOSITORY }}`.

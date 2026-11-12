@@ -7,13 +7,17 @@
 [![MCP Catalog](https://archestra.ai/mcp-catalog/api/badge/quality/grafana/mcp-grafana)](https://archestra.ai/mcp-catalog/grafana__mcp-grafana)
 
 > [!NOTE]
-> **This is a team fork of [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana).**
+> **This is a fork of [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana).**
 > It adds one feature: signing in with **your own Grafana browser session** (SSO, MFA, ...)
 > instead of a service account token, including support for Cursor cloud agents.
 >
 > ```bash
-> go build -o "$HOME/bin/mcp-grafana" ./cmd/mcp-grafana
-> mcp-grafana login --url https://yourcompany.grafana.net
+> # macOS or Linux: download the binary from this fork's releases
+> OS=$(uname -s | tr '[:upper:]' '[:lower:]'); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+> mkdir -p "$HOME/bin" && curl -fsSL -o "$HOME/bin/mcp-grafana" \
+>   "https://github.com/pkajaba/mcp-grafana/releases/latest/download/mcp-grafana_${OS}_${ARCH}" \
+>   && chmod +x "$HOME/bin/mcp-grafana"
+> "$HOME/bin/mcp-grafana" login --url https://yourcompany.grafana.net
 > ```
 >
 > Then set `GRAFANA_SESSION_FILE` in your MCP client config.
@@ -21,7 +25,8 @@
 > Or let your coding agent install and configure it with **[Agent setup](docs/agent-setup.md)**.
 >
 > Everything else below is the upstream README. `uvx mcp-grafana`, the upstream Docker
-> images and the upstream releases do **not** include this feature, so build from this repository.
+> images and the upstream releases do **not** include this feature, so use
+> [this fork's releases](https://github.com/pkajaba/mcp-grafana/releases).
 
 A [Model Context Protocol][mcp] (MCP) server for Grafana.
 
